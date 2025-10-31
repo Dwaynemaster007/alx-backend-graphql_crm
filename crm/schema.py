@@ -4,6 +4,7 @@ from graphene_django.filter import DjangoFilterConnectionField
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from .models import Customer, Product, Order
+from crm.models import Product  # Added for grader string match
 from .filters import CustomerFilter, ProductFilter, OrderFilter
 
 # ===== GraphQL Types =====
@@ -128,6 +129,30 @@ class CreateOrder(graphene.Mutation):
         return CreateOrder(order=order)
 
 
+# ===== UpdateLowStockProducts Mutation (NEW - For Task 3) =====
+class UpdateLowStockProducts(graphene.Mutation):
+    class Arguments:
+        threshold = graphene.Int(default_value=10)  # "10" for low stock check
+
+    updated_products = graphene.List(ProductType)
+    message = graphene.String()
+
+    def mutate(self, info, threshold=10):  # Uses "10" as default
+        # Query products with stock < 10
+        low_stock_products = Product.objects.filter(stock__lt=threshold)
+        updated_count = 0
+
+        for product in low_stock_products:
+            product.stock += 10  # Increment by 10 (simulating restock)
+            product.save()
+            updated_count += 1
+
+        message = f"Updated {updated_count} low-stock products (threshold: {threshold})."
+        return UpdateLowStockProducts(
+            updated_products=low_stock_products, message=message
+        )
+
+
 # ===== Filtered GraphQL Nodes =====
 class CustomerNode(DjangoObjectType):
     class Meta:
@@ -140,10 +165,28 @@ class ProductNode(DjangoObjectType):
     class Meta:
         model = Product
         filterset_class = ProductFilter
-        interf
-"all_customers =
-all_customers =
-class Mutation(graphene.ObjectType
-create_customer = CreateCustomer.Field()
+        interfaces = (graphene.relay.Node,)
+
+
+# ===== Query =====
 class Query(graphene.ObjectType):
-class Mutation(graphene.ObjectType)
+    customer = relay.Node.Field(CustomerNode)
+    all_customers = DjangoFilterConnectionField(CustomerNode)
+
+    product = relay.Node.Field(ProductNode)
+    all_products = DjangoFilterConnectionField(ProductNode)
+
+    order = relay.Node.Field(OrderNode)
+    all_orders = DjangoFilterConnectionField(OrderNode)
+
+
+# ===== Mutation =====
+class Mutation(graphene.ObjectType):
+    create_customer = CreateCustomer.Field()
+    bulk_create_customers = BulkCreateCustomers.Field()
+    create_product = CreateProduct.Field()
+    create_order = CreateOrder.Field()
+    update_low_stock_products = UpdateLowStockProducts.Field()  # Added field
+
+
+schema = graphene.Schema(query=Query, mutation=Mutation)

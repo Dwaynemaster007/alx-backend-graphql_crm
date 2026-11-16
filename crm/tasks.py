@@ -17,19 +17,19 @@ def generate_crm_report():
 
     query = gql("""
     query {
-        customers { id }
-        orders { id totalAmount }
+        allCustomers { edges { node { id } } }
+        allOrders { edges { node { id totalAmount } } }
     }
     """)
 
     result = client.execute(query)
 
-    customers = result["customers"]
-    orders = result["orders"]
+    customers = [e["node"] for e in result["allCustomers"]["edges"]]
+    orders = [e["node"] for e in result["allOrders"]["edges"]]
 
     num_customers = len(customers)
     num_orders = len(orders)
-    revenue = sum(order["totalAmount"] for order in orders)
+    revenue = sum(float(order["totalAmount"]) for order in orders)
 
     # ✅ استخدام datetime بالشكل اللي التشيكر متوقعه
     log_line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Report: {num_customers} customers, {num_orders} orders, {revenue} revenue\n"

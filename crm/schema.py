@@ -1,10 +1,10 @@
 import graphene
+from graphene import relay
 from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from .models import Customer, Product, Order
-from crm.models import Product  # Added for grader string match
 from .filters import CustomerFilter, ProductFilter, OrderFilter
 
 # ===== GraphQL Types =====
@@ -45,18 +45,15 @@ class CreateCustomer(graphene.Mutation):
         return CreateCustomer(customer=customer, message="Customer created successfully.")
 
 
+class CustomerInput(graphene.InputObjectType):
+    name = graphene.String(required=True)
+    email = graphene.String(required=True)
+    phone = graphene.String()
+
+
 class BulkCreateCustomers(graphene.Mutation):
     class Arguments:
-        input = graphene.List(
-            graphene.NonNull(
-                graphene.InputObjectType(
-                    "CustomerInput",
-                    name=graphene.String(required=True),
-                    email=graphene.String(required=True),
-                    phone=graphene.String(),
-                )
-            )
-        )
+        input = graphene.List(graphene.NonNull(CustomerInput), required=True)
 
     customers = graphene.List(CustomerType)
     errors = graphene.List(graphene.String)
@@ -139,7 +136,7 @@ class UpdateLowStockProducts(graphene.Mutation):
 
     def mutate(self, info, threshold=10):  # Uses "10" as default
         # Query products with stock < 10
-        low_stock_products = Product.objects.filter(stock__lt=threshold)
+        low_stock_products = list(Product.objects.filter(stock__lt=threshold))
         updated_count = 0
 
         for product in low_stock_products:
@@ -165,6 +162,13 @@ class ProductNode(DjangoObjectType):
     class Meta:
         model = Product
         filterset_class = ProductFilter
+        interfaces = (graphene.relay.Node,)
+
+
+class OrderNode(DjangoObjectType):
+    class Meta:
+        model = Order
+        filterset_class = OrderFilter
         interfaces = (graphene.relay.Node,)
 
 

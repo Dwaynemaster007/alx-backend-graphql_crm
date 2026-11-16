@@ -22,8 +22,8 @@ def update_low_stock():
             """
             mutation {
                 updateLowStockProducts {
-                    success
-                    products {
+                    message
+                    updatedProducts {
                         name
                         stock
                     }
@@ -33,7 +33,7 @@ def update_low_stock():
         )
 
         result = client.execute(mutation)
-        updates = result["updateLowStockProducts"]["products"]
+        updates = result["updateLowStockProducts"]["updatedProducts"]
 
         with open(LOW_STOCK_LOG, "a") as f:
             for p in updates:

@@ -27,9 +27,10 @@ class Order(models.Model):
     order_date = models.DateTimeField(default=timezone.now)
 
     def save(self, *args, **kwargs):
-        # Auto-calculate total_amount before saving
-        total = sum(product.price for product in self.products.all())
-        self.total_amount = total
+        # Recalculate the total from the products once the order exists
+        # (many-to-many relations can't be read before the first save)
+        if self.pk:
+            self.total_amount = sum(product.price for product in self.products.all())
         super().save(*args, **kwargs)
 
     def __str__(self):
